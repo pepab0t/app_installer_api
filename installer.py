@@ -8,7 +8,10 @@ except ImportError:
 import os
 import re
 import shutil
+import warnings
 from pathlib import Path
+
+warnings.simplefilter("ignore")
 
 PATH: Path = Path(__file__).parent.resolve()
 URL: str = 'http://localhost:8000'
