@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 try:
     import requests
@@ -7,9 +8,9 @@ except ImportError:
     os.system('pause')
     exit()
 
-
 import re
 import shutil
+import sys
 import warnings
 from pathlib import Path
 
@@ -58,25 +59,47 @@ def get_app_source(app_name: str) -> str:
 
     return app_zipfile
 
-def download_packages():
+def download_packages() -> Optional[str]:
     done_char = "#"#"\u2588"
     undone_char = "-"
-    response = requests.get("https://czrmpra-fp01:5000/libraries/download", verify=False, stream=True)
+    try:
+        response = requests.get("https://czrmpra-fp01:5000/libraries/download", verify=False, stream=True)
+    except Exception:
+        print("Unable to access server")
+        return
 
     if not response.ok:
+        print("Invalid response from server")
         return
 
     total_length = int(response.headers.get('content-length'))  # type: ignore
 
-
+    zip_name: str = 'site-packages-temp.zip'
     dl = 0
-    with open('file.zip', 'wb') as f:
+    with open(zip_name, 'wb') as f:
         for data in response.iter_content(chunk_size=4096):
             dl += len(data)
 
             done = (50 * dl/total_length)
             f.write(data)
             print(f"\r{(done/50 * 100):5.1f}% |{done_char*int(done)+undone_char*(50-int(done))}|", end='')
+
+    print("\nDownloaded successfully!")
+    return zip_name
+
+def get_lib_dir() -> Optional[Path]:
+    interpreter_dir = Path(sys.executable).parent
+
+    if 'Lib' in os.listdir(interpreter_dir):
+        lib_dir = interpreter_dir / "Lib"
+    else:
+        lib_dir = interpreter_dir.parent / "Lib"
+
+    if 'site-packages' in os.listdir(lib_dir):
+        return lib_dir
+    else:
+        return None
+
 
 def main():
     try:
@@ -91,23 +114,27 @@ def main():
         os.system('pause')
         return
     apps = {str(i): app for i, app in enumerate(_apps, start=1)}
-    packs = {str(len(apps)): 'Download python packages'}
+    packs = {str(len(apps)+1): 'Download python packages'}
     while True:
         os.system('cls')
-        print('Welcome to APP INSTALLER')
+        print('Welcome to APP INSTALLER'.upper())
+        print('.'.join(map(str, sys.version_info[:3])))
         print('New app will be installed to the folder, where this script is located.')
         print(PATH)
-        print('Be careful! This process removes entire content of the directory.\n')
+        print('Be careful!:\n + Installing removes entire content of the directory')
+        print(' + Downloading packages overwrites all packages of current python interpreter\n')
         print('Available apps:')
         for i, app in apps.items(): 
             print(f"{i} - {app}")
+        for i, pack in packs.items(): 
+            print(f"{i} - {pack}")
         print('-----------------\nE - exit installer\n')
+
         choice: str = input('>> ').upper()
 
         if choice.upper() == 'E':
             return
-
-        if choice in apps:
+        elif choice in apps:
             print('Installing ...')
             clear_dir()
             try:
@@ -121,9 +148,22 @@ def main():
             print('Start app with file: main.py')
             os.system('pause')
             return
+        elif choice in packs:
+            print('Downloading packages ... ')
+            zip_name = download_packages()
+            if not zip_name:
+                print('Download Failed!')
+                continue
+            lib_dir: Optional[Path] = get_lib_dir()
+            if not lib_dir:
+                print('Cannot find python Lib directory')
+                continue
+            print('Extracting downloaded packages.')
+            shutil.rmtree(lib_dir)
+            shutil.unpack_archive(f'./{zip_name}', lib_dir)
+            print('Packages successfully extracted :)')
+            os.system("pause")
+        
 
 if __name__ == "__main__":
     main()
-
-
-
