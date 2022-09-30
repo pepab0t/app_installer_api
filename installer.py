@@ -159,7 +159,7 @@ def main():
                 print('Cannot find python Lib directory')
                 continue
             print('Extracting downloaded packages.')
-            shutil.rmtree(lib_dir)
+            shutil.rmtree(lib_dir / "site-packages") 
             shutil.unpack_archive(f'./{zip_name}', lib_dir)
             print('Packages successfully extracted :)')
             os.system("pause")
