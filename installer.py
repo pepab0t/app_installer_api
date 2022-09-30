@@ -1,11 +1,13 @@
+import os
+
 try:
     import requests
 except ImportError:
     print('Missing requirement: requests. Please connect to wi-fi and execute command: "pip install requests==2.26.0"')
+    os.system('pause')
     exit()
 
 
-import os
 import re
 import shutil
 import warnings
@@ -14,7 +16,8 @@ from pathlib import Path
 warnings.simplefilter("ignore")
 
 PATH: Path = Path(__file__).parent.resolve()
-URL: str = 'http://localhost:8000'
+URL: str = 'https://czrmpra-fp01:5000'
+#URL: str = 'http://localhost:8000'
 __fname__: str = re.split(r'/|\\', __file__)[-1]
 
 def clear_dir():
@@ -33,8 +36,6 @@ def get_available_apps() -> list[str]:
     except requests.exceptions.ConnectionError:
         raise Exception('Unable to connect to API, make sure you are connected to ZScaler or LAN network')
     
-    result = response.json()
-
     return [k for k, v in response.json().items() if v['version'] is not None]
 
 def get_app_source(app_name: str) -> str:
@@ -57,6 +58,26 @@ def get_app_source(app_name: str) -> str:
 
     return app_zipfile
 
+def download_packages():
+    done_char = "#"#"\u2588"
+    undone_char = "-"
+    response = requests.get("https://czrmpra-fp01:5000/libraries/download", verify=False, stream=True)
+
+    if not response.ok:
+        return
+
+    total_length = int(response.headers.get('content-length'))  # type: ignore
+
+
+    dl = 0
+    with open('file.zip', 'wb') as f:
+        for data in response.iter_content(chunk_size=4096):
+            dl += len(data)
+
+            done = (50 * dl/total_length)
+            f.write(data)
+            print(f"\r{(done/50 * 100):5.1f}% |{done_char*int(done)+undone_char*(50-int(done))}|", end='')
+
 def main():
     try:
         _apps = get_available_apps()
@@ -70,6 +91,7 @@ def main():
         os.system('pause')
         return
     apps = {str(i): app for i, app in enumerate(_apps, start=1)}
+    packs = {str(len(apps)): 'Download python packages'}
     while True:
         os.system('cls')
         print('Welcome to APP INSTALLER')
