@@ -19,6 +19,7 @@ warnings.simplefilter("ignore")
 PATH: Path = Path(__file__).parent.resolve()
 URL: str = 'https://czrmpra-fp01:5000'
 #URL: str = 'http://localhost:8000'
+PACKAGE_ZIP: str = 'site-packages-temp.zip'
 __fname__: str = re.split(r'/|\\', __file__)[-1]
 
 def clear_dir():
@@ -74,9 +75,8 @@ def download_packages() -> Optional[str]:
 
     total_length = int(response.headers.get('content-length'))  # type: ignore
 
-    zip_name: str = 'site-packages-temp.zip'
     dl = 0
-    with open(zip_name, 'wb') as f:
+    with open(PACKAGE_ZIP, 'wb') as f:
         for data in response.iter_content(chunk_size=4096):
             dl += len(data)
 
@@ -85,7 +85,7 @@ def download_packages() -> Optional[str]:
             print(f"\r{(done/50 * 100):5.1f}% |{done_char*int(done)+undone_char*(50-int(done))}|", end='')
 
     print("\nDownloaded successfully!")
-    return zip_name
+    return PACKAGE_ZIP
 
 def get_lib_dir() -> Optional[Path]:
     interpreter_dir = Path(sys.executable).parent
@@ -161,6 +161,8 @@ def main():
             print('Extracting downloaded packages.')
             shutil.rmtree(lib_dir / "site-packages") 
             shutil.unpack_archive(f'./{zip_name}', lib_dir)
+            if os.path.exists(PACKAGE_ZIP):
+                os.remove(PACKAGE_ZIP)
             print('Packages successfully extracted :)')
             os.system("pause")
         
