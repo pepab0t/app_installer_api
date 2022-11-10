@@ -1,12 +1,18 @@
 import os
+import subprocess
 from typing import Optional
 
 try:
     import requests
 except ImportError:
     print('Missing requirement: requests. Please connect to wi-fi and execute command: "pip install requests==2.26.0"')
+    print("python requests installation required, please connect to Wi-Fi")
     os.system('pause')
-    exit()
+    subprocess.run(["pip", "install", "requests==2.26.0"])
+    try:
+        import requests
+    except ImportError:
+        exit()
 
 import re
 import shutil
