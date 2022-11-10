@@ -40,7 +40,7 @@ def clear_dir():
 
 def get_available_apps() -> list[str]:
     try:
-        response = requests.get(f"{URL}/app/all", verify=False, timeout=2)
+        response = requests.get(f"{URL}/app/all", verify=False)
     except requests.exceptions.ConnectionError:
         raise Exception('Unable to connect to API, make sure you are connected to ZScaler or LAN network')
     
@@ -48,7 +48,7 @@ def get_available_apps() -> list[str]:
 
 def get_app_source(app_name: str) -> str:
     try:
-        response = requests.get(f'{URL}/app/download/{app_name}', verify=False, timeout=2)
+        response = requests.get(f'{URL}/app/download/{app_name}', verify=False)
     except requests.exceptions.ConnectionError:
         raise Exception('Unable to connect to API, make sure you are connected to ZScaler or LAN network')
 
@@ -106,6 +106,18 @@ def get_lib_dir() -> Optional[Path]:
     else:
         return None
 
+def extract_packages(lib_dir, zip_name):
+    print('Extracting downloaded packages.')
+
+    for pkg in os.listdir(lib_dir / "site-packages"):
+        try:
+            shutil.rmtree(lib_dir / "site_packages" / pkg) 
+        except Exception:
+            continue
+    shutil.unpack_archive(f'./{zip_name}', lib_dir)
+    if os.path.exists(PACKAGE_ZIP):
+        os.remove(PACKAGE_ZIP)
+
 
 def main():
     try:
@@ -121,57 +133,73 @@ def main():
         return
     apps = {str(i): app for i, app in enumerate(_apps, start=1)}
     packs = {str(len(apps)+1): 'Download python packages'}
-    while True:
-        os.system('cls')
-        print('Welcome to APP INSTALLER'.upper())
-        print('.'.join(map(str, sys.version_info[:3])))
-        print('New app will be installed to the folder, where this script is located.')
-        print(PATH)
-        print('Be careful!:\n + Installing removes entire content of the directory')
-        print(' + Downloading packages overwrites all packages of current python interpreter\n')
-        print('Available apps:')
-        for i, app in apps.items(): 
-            print(f"{i} - {app}")
-        for i, pack in packs.items(): 
-            print(f"{i} - {pack}")
-        print('-----------------\nE - exit installer\n')
+    if len(sys.argv) == 1:
+        while True:
+            os.system('cls')
+            print('Welcome to APP INSTALLER'.upper())
+            print('.'.join(map(str, sys.version_info[:3])))
+            print('New app will be installed to the folder, where this script is located.')
+            print(PATH)
+            print('Be careful!:\n + Installing removes entire content of the directory')
+            print(' + Downloading packages overwrites all packages of current python interpreter\n')
+            print('Available apps:')
+            for i, app in apps.items(): 
+                print(f"{i} - {app}")
+            for i, pack in packs.items(): 
+                print(f"{i} - {pack}")
+            print('-----------------\nE - exit installer\n')
 
-        choice: str = input('>> ').upper()
+            choice: str = input('>> ').upper()
 
-        if choice.upper() == 'E':
-            return
-        elif choice in apps:
-            print('Installing ...')
-            clear_dir()
-            try:
-                app_source = get_app_source(apps[choice])
-            except Exception as e:
-                print(e)
+            if choice.upper() == 'E':
                 return
-            shutil.unpack_archive(app_source, PATH)
-            os.remove(app_source)
-            print('Sucessfully installed')
-            print('Start app with file: main.py')
-            os.system('pause')
-            return
-        elif choice in packs:
-            print('Downloading packages ... ')
+            elif choice in apps:
+                print('Installing ...')
+                clear_dir()
+                try:
+                    app_source = get_app_source(apps[choice])
+                except Exception as e:
+                    print(e)
+                    return
+                shutil.unpack_archive(app_source, PATH)
+                os.remove(app_source)
+                print('Sucessfully installed')
+                print('Start app with file: main.py')
+                os.system('pause')
+                return
+            elif choice in packs:
+                print('Downloading packages ... ')
+                zip_name = download_packages()
+                if not zip_name:
+                    print('Download Failed!')
+                    continue
+                lib_dir: Optional[Path] = get_lib_dir()
+                if not lib_dir:
+                    print('Cannot find python Lib directory')
+                    continue
+                extract_packages(lib_dir, zip_name)
+                print('Packages successfully extracted :)')
+                os.system("pause")
+        
+    if len(sys.argv) == 3 and sys.argv[1] == '-o':
+        option = sys.argv[2]
+
+        if option == 'packages': 
             zip_name = download_packages()
             if not zip_name:
-                print('Download Failed!')
-                continue
+                sys.exit(1)
             lib_dir: Optional[Path] = get_lib_dir()
             if not lib_dir:
-                print('Cannot find python Lib directory')
-                continue
-            print('Extracting downloaded packages.')
-            shutil.rmtree(lib_dir / "site-packages") 
-            shutil.unpack_archive(f'./{zip_name}', lib_dir)
-            if os.path.exists(PACKAGE_ZIP):
-                os.remove(PACKAGE_ZIP)
-            print('Packages successfully extracted :)')
-            os.system("pause")
-        
+                sys.exit(1)
+            extract_packages(lib_dir, zip_name)
+        else:
+            print('invalid option')
+            sys.exit(1)
+
+    else:
+        print(f"Invalid arguments: {sys.argv}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
